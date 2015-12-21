@@ -36,25 +36,39 @@ def gentiles():
                 if sid == -1: sid = 3
         return (i,j)
     last = digger(15,15)
+
+    for i in range(1, width-1):
+        for j in range(1, height-1):
+            if tiles[i][j] == -1:
+                if tiles[i+1][j] == 0: tiles[i][j] = 1
+                if tiles[i-1][j] == 0: tiles[i][j] = 1
+                if tiles[i][j+1] == 0: tiles[i][j] = 1
+                if tiles[i][j-1] == 0: tiles[i][j] = 1
+
     return tiles
 
 def tile2doom(tiles):
     player_placed = 0
 
-    temp_sidedef  = omg.mapedit.Sidedef(tx_mid="METAL2")
+    sectors = []
+    sidedefs = []
+    sidedefs.append(omg.mapedit.Sidedef(tx_mid="METAL2"))
+    sidedefs.append(omg.mapedit.Sidedef(tx_mid="METAL2"))
+    sectors.append(omg.mapedit.Sector(tx_ceil="F_SKY1",z_ceil=136))
+    sectors.append(omg.mapedit.Sector(z_floor=64,light=192))
 
     for i in range(len(tiles)):
         for j in range(len(tiles[i])):
-            if tiles[i][j] == 0:
+            if tiles[i][j] != -1:
                 if player_placed == 0:
                     player_placed = 1
-                    omap.things.append(omg.mapedit.Thing(x=(i*32)+16,y=(j*32)+16,type=0))
+                    omap.things.append(omg.mapedit.Thing(x=(i*32)+16,y=(j*32)+16,type=1))
                 verts = []
                 verts.append((i * 32, j * 32))
                 verts.append(((i+1) * 32, j * 32))
                 verts.append(((i+1) * 32, (j+1) * 32))
                 verts.append((i * 32, (j+1) * 32))
-                omap.draw_sector(verts,sidedef=temp_sidedef)
+                omap.draw_sector(verts,sector=sectors[tiles[i][j]],sidedef=sidedefs[tiles[i][j]])
 
     owad.maps["MAP01"] = omap.to_lumps()
 
