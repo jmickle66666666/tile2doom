@@ -1,10 +1,16 @@
 import random, math, omg
 from scipy.spatial import ConvexHull
 
-width = 3000
-height = 3000
-num_locpoints = 100
+width = 9000
+height = 2000
+num_locpoints = 200
 num_points = 4000
+
+def r8int(low,high):
+    r = random.randint(low,high)
+    r = int(r/8)
+    r *= 8
+    return r
 
 class Locpoint(object):
     def __init__(self,x,y):
@@ -12,8 +18,9 @@ class Locpoint(object):
         self.y = y
         self.points = []
         self.hull = None
-        dist = math.sqrt(((width/2) - x)**2 + ((height/2) - y)**2)
-        self.sector = omg.mapedit.Sector(z_ceil=512,tx_ceil="F_SKY1",z_floor=random.randint(int(dist / 6),int(dist/4)),tx_floor="RROCK03",light=256)
+        #dist = math.sqrt(((width/2) - x)**2 + ((height/2) - y)**2)
+        dist = abs(y - (height/2))
+        self.sector = omg.mapedit.Sector(z_ceil=512,tx_ceil="F_SKY1",z_floor=r8int(int(dist / 6),int(dist/4))+8,tx_floor="RROCK03",light=256)
 
 
 locpoints = []
@@ -53,13 +60,14 @@ omap.linedefs.append(omg.mapedit.Linedef(front=0,vx_a=2,vx_b=3))
 omap.linedefs.append(omg.mapedit.Linedef(front=0,vx_a=3,vx_b=0))
 
 for l in locpoints:
-    l.hull = ConvexHull(l.points)
-    verts = []
-    for v in l.hull.vertices.tolist():
-        point = l.hull.points[v].tolist()
-        verts.append( (point[0],point[1]) )
-    sect = l.sector
-    omap.draw_sector(verts,sector=sect)
+    if len(l.points) > 2:
+        l.hull = ConvexHull(l.points)
+        verts = []
+        for v in l.hull.vertices.tolist():
+            point = l.hull.points[v].tolist()
+            verts.append( (point[0],point[1]) )
+        sect = l.sector
+        omap.draw_sector(verts,sector=sect)
 
 bsid = omg.mapedit.Sidedef(tx_low="SP_ROCK1",sector=0)
 omap.sidedefs.append(bsid)
