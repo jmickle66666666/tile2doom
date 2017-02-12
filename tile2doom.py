@@ -198,6 +198,15 @@ def get_sidedef(omap, tx_up, tx_low, tx_mid, sector):
     omap.sidedefs.append(ns)
     return len(omap.sidedefs) - 1
 
+# get a vertex, create it if it doesn't exist already
+def get_vertex(omap, x, y):
+    for v in omap.vertexes:
+        if v.x == x and v.y == y:
+            return omap.vertexes.index(v)
+    nv = omg.mapedit.Vertex(x=x,y=y)
+    omap.vertexes.append(nv)
+    return len(omap.vertexes) - 1
+
 # convert linedata to doom format map, and output the wad
 def linedata2doom(lines, mapsectors, void):
     owad = omg.WAD()
@@ -210,10 +219,8 @@ def linedata2doom(lines, mapsectors, void):
 
     for m in lines:
         if m.remain:
-            omap.vertexes.append(omg.mapedit.Vertex(x=m.x1,y=m.y1))
-            omap.vertexes.append(omg.mapedit.Vertex(x=m.x2,y=m.y2))
-            omap.linedefs.append(omg.mapedit.Linedef(vx_a = len(omap.vertexes)-2,
-                                                     vx_b = len(omap.vertexes)-1,
+            omap.linedefs.append(omg.mapedit.Linedef(vx_a = get_vertex(omap,m.x1,m.y1),
+                                                     vx_b = get_vertex(omap,m.x2,m.y2),
                                                      front = m.front-1,
                                                      back = m.back-1))
 
