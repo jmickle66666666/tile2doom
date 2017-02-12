@@ -1,8 +1,10 @@
 import omg, random, json
 from PIL import Image
 
+# global var for how big the tiles need to be
 TILESIZE = 32
 
+# MapSector class, stores the sector information for each tile
 class MapSector:
     def __init__(self, sidedef, floor, ceil, z_floor, z_ceil):
         self.sidedef = sidedef
@@ -11,12 +13,15 @@ class MapSector:
         self.z_floor = z_floor
         self.z_ceil = z_ceil
 
+    # returns a new doom format sidedef, using the texture defined
     def get_sidedef(self):
         return omg.mapedit.Sidedef(tx_mid=self.sidedef)
 
+    # returns a new doom format sector, using the flats and z_ heights defined
     def get_sector(self):
         return omg.mapedit.Sector(tx_ceil=self.ceil,tx_floor=self.floor,z_ceil=self.z_ceil,z_floor=self.z_floor)
 
+# convert an image to a set of tiles, using unique colors as indexes. useful for testing, not in practice :)
 def image_to_tiles(img):
     print "converting image to tiles..."
     pix = img.load()
@@ -35,6 +40,7 @@ def image_to_tiles(img):
             output[i][j] = colors.index(pix[i,j])
     return output
     
+# test function to generate a set of tiles
 def gentiles():
     width = 30
     height = 30
@@ -69,6 +75,7 @@ def gentiles():
 
     return tiles
 
+# Line class for use before converting into a doom format line
 class MapLine:
     def __init__(self,x1,y1,x2,y2,front,back):
         self.x1 = x1
@@ -78,18 +85,22 @@ class MapLine:
         self.front = front
         self.back = back
         self.remain = True
+        # this is for line merging, if its a cardinal direction store a value, otherwise
+        # just make sure two lines don't get merged automatically. not a cool method
         self.angle = random.random()
         if self.x1 == self.x2 and self.y1 < self.y2: self.angle = 0
         if self.x1 == self.x2 and self.y1 > self.y2: self.angle = 1
         if self.y1 == self.y2 and self.x1 < self.x2: self.angle = 2
         if self.y1 == self.y2 and self.x1 > self.x2: self.angle = 3
 
+    # return tuples of the position
     def v1(self):
         return (self.x1,self.y1)
 
     def v2(self):
         return (self.x2,self.y2)
 
+    # check if two lines share a point, but not the same point!
     @staticmethod
     def share_a_point(l1,l2):
         if l1.v1() == l2.v2(): return True
@@ -98,6 +109,7 @@ class MapLine:
         # if l1.v2() == l2.v2(): return True
         return False
 
+    # create a new line, merging the two
     @staticmethod
     def merged_line(l1,l2):
         newline = None
@@ -108,11 +120,14 @@ class MapLine:
         
         return newline
 
+# convert tile data into linedata, ready for writing to a doom map
 def tiles2linedata(tiles, void):
     # convert the tiles from tiles to lines defining the edges of the tiles
     # the lines will thus informations: x1, y1, x2, y2, front index, back index
     maplines = []
 
+    # create the lines in all the different situations we need
+    # edges of the tilemap are handled separately 
     for i in range(len(tiles)):
         for j in range(len(tiles[i])):
             if i == 0 and tiles[i][j] != void:
@@ -144,13 +159,10 @@ def tiles2linedata(tiles, void):
 
     print "merge lines"
     # merge lines
-    delete_indexes = []
-    new_lines = []
 
-    print "find and add merges"
-    mergeone = True
-    timeout = 1000
-    print "map lines at start: {}".format(len(maplines))
+    mergeone = True # we break out of the loop every time we create a line, this is necessary to make sure it works
+    timeout = 1000 # just in case. might get rid of this since it works now
+    print "map lines at start: {}".format(len(maplines)) # lets see how many lines we saved! spoilers: a lot
     while mergeone is True and timeout > 0:
         #print timeout
         timeout -= 1 
@@ -164,17 +176,20 @@ def tiles2linedata(tiles, void):
                         if l1.back == l2.back:
                             if l1.angle == l2.angle:
                                 if MapLine.share_a_point(l1,l2):
+                                    # if all the data lines up...
                                     new = MapLine.merged_line(l1,l2)
                                     if new is not None:
-                                        maplines.append(new)
-                                        l1.remain = False
+                                        # and we successfully created a new linedef...
+                                        maplines.append(new) # add the new linedef
+                                        l1.remain = False # remove the old ones that got merged
                                         l2.remain = False
                                         maplines[:] = [x for x in maplines if not x.remain is False]
                                         mergeone = True
-                                        break
+                                        break # and go from the start!
     print "map lines at end: {}".format(len(maplines))
     return maplines
 
+# get a sidedef, create it if it doesn't exist already
 def get_sidedef(omap, tx_up, tx_low, tx_mid, sector):
     for s in omap.sidedefs:
         if s.tx_up == tx_up and s.tx_low == tx_low and s.tx_mid == tx_mid and s.sector == sector:
@@ -183,6 +198,7 @@ def get_sidedef(omap, tx_up, tx_low, tx_mid, sector):
     omap.sidedefs.append(ns)
     return len(omap.sidedefs) - 1
 
+# convert linedata to doom format map, and output the wad
 def linedata2doom(lines, mapsectors, void):
     owad = omg.WAD()
     omap = omg.mapedit.MapEditor()
@@ -213,6 +229,7 @@ def linedata2doom(lines, mapsectors, void):
     owad.maps["MAP01"] = omap.to_lumps()
     return owad
 
+# convert an image all the way to a doom map, fun!
 def image2tiles2lines2doom(image, mapsectors, void):
     print "image to tiles" 
     tiles = image_to_tiles(image)
@@ -222,6 +239,7 @@ def image2tiles2lines2doom(image, mapsectors, void):
     output = linedata2doom(lines, mapsectors, void)
     return output
 
+# convert tiles to a doom map
 def tile2doom(tiles, mapsectors, void):
     print "converting tiles to map"
     owad = omg.WAD()
@@ -248,12 +266,14 @@ def tile2doom(tiles, mapsectors, void):
 
     return owad
 
+# convert the "sectors" portion of a json data file into a MapSectors array
 def load_json_sectors(json_sectors):
     output = []
     for s in json_sectors:
         output.append(MapSector(s["texture"],s["floor"],s["ceil"],s["z_floor"],s["z_ceil"]))
     return output
 
+# convert a json data file all the way into a doom map!
 def json2doom(data):
     global TILESIZE
     TILESIZE = data["tilesize"]
@@ -262,6 +282,7 @@ def json2doom(data):
     output = linedata2doom(lines, load_json_sectors(data["sectors"]), data["void"])
     return output
 
+# test stuff
 if __name__=="__main__":
     with open("testlevel.json") as jfile:
         owad = json2doom(json.load(jfile))
