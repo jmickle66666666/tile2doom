@@ -273,6 +273,13 @@ def tile2doom(tiles, mapsectors, void):
 
     return owad
 
+# convert coords format to 2darray. TODO: just load coords format directly
+def coords22darray(coords,width,height, void):
+    tiles = [[void for y in range(width)] for x in range(height)]
+    for c in coords:
+        tiles[c[0]][c[1]] = c[2]
+    return tiles
+
 # convert the "sectors" portion of a json data file into a MapSectors array
 def load_json_sectors(json_sectors):
     output = []
@@ -282,15 +289,44 @@ def load_json_sectors(json_sectors):
 
 # convert a json data file all the way into a doom map!
 def json2doom(data):
+    if data["version"] != "0.1": 
+        print "Sorry, invalid version in json: {}".format(data["version"])
+        return None
+
     global TILESIZE
     TILESIZE = data["tilesize"]
     # to lines
-    lines = tiles2linedata(data["tiles"],data["void"])
+
+    # 2darray vs coords:
+    # 2darray is a big ol' square of tile indexes, v simple to read and
+    # more compact when a lot of the area inside the bounds of the map is filled
+    # coords is a list of position,index values which define where each tile is an
+    # d what it is. this is more compact when the bounds of the map has a much
+    # bigger area than the map coverage itself.
+    # at a guess i'd say if more than 1/4 of the bounds area is covered, then 
+    # 2darray is smaller. we'll just have to see what it's like in practice.
+    # the reasoning is, 2darray has to define every void tile inbetween and around 
+    # the existing tiles, yet coords only defines the tiles that exist. however,
+    # the coords data is much larger than the 2darray data. while 2darray only needs
+    # on average 2 characters (but often only 1) to define the tile, coords needs
+    # around 10~11. it's up to the editing application to decide which will be 
+    # better to save as. I'd recommend creating both and checking the size but
+    # that might be overkill. maybe it's possible to calculate easy enough
+
+    if data["format"] == "2darray": 
+        lines = tiles2linedata(data["tiles"],data["void"])
+
+    if data["format"] == "coords":
+        width = data["width"]
+        height = data["height"]
+        tiles = coords22darray(data["tiles"],data["width"],data["height"],data["void"])
+        lines = tiles2linedata(tiles, data["void"])
+
     output = linedata2doom(lines, load_json_sectors(data["sectors"]), data["void"])
     return output
 
 # test stuff
 if __name__=="__main__":
-    with open("testlevel.json") as jfile:
+    with open("testlevel2.json") as jfile:
         owad = json2doom(json.load(jfile))
     owad.to_file("test.wad")
